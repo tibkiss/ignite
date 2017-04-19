@@ -133,11 +133,13 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
 
         boolean rcvAll = false;
 
-        long futId = 0;
+        long futId;
 
         synchronized (this) {
             if (!futureMapped())
                 return false;
+
+            futId = this.futId;
 
             if (reqState.req.nodeId.equals(nodeId)) {
                 GridNearAtomicAbstractUpdateRequest req = reqState.onPrimaryFail();
@@ -167,7 +169,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 opRes0 = opRes;
                 err0 = err;
                 remapTopVer0 = onAllReceived();
-                futId = this.futId;
             }
         }
 
@@ -175,49 +176,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
             sendCheckUpdateRequest(checkReq);
         else if (rcvAll)
             finishUpdateFuture(opRes0, err0, remapTopVer0, futId);
-
-        return false;
-    }
-
-    /**
-     * @param ret Result.
-     * @param err Error.
-     * @param futId Not null ID if need remove future.
-     */
-    private void completeFuture(@Nullable GridCacheReturn ret, Throwable err, @Nullable Long futId) {
-        Object retval = ret == null ? null : rawRetval ? ret : (this.retval || op == TRANSFORM) ?
-            cctx.unwrapBinaryIfNeeded(ret.value(), keepBinary) : ret.success();
-
-        if (op == TRANSFORM && retval == null)
-            retval = Collections.emptyMap();
-
-        if (futId != null)
-            cctx.mvcc().removeAtomicFuture(futId);
-
-        super.onDone(retval, err);
-    }
-
-    /** {@inheritDoc} */
-    @SuppressWarnings("ConstantConditions")
-    @Override public boolean onDone(@Nullable Object res, @Nullable Throwable err) {
-        assert err != null;
-
-        Long futId = null;
-
-        synchronized (this) {
-            if (futureMapped()) {
-                futId = this.futId;
-
-                topVer = AffinityTopologyVersion.ZERO;
-            }
-        }
-
-        if (super.onDone(null, err)) {
-            if (futId != null)
-                cctx.mvcc().removeAtomicFuture(futId);
-
-            return true;
-        }
 
         return false;
     }
@@ -377,6 +335,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
 
             reqState = null;
             topVer = AffinityTopologyVersion.ZERO;
+            futId = 0;
 
             remapTopVer = null;
         }
@@ -492,6 +451,7 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
             reqState0 = mapSingleUpdate(topVer, futId);
 
             synchronized (this) {
+                assert topVer.topologyVersion() > 0 : topVer;
                 assert this.topVer == AffinityTopologyVersion.ZERO : this;
 
                 this.topVer = topVer;
@@ -562,21 +522,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
             sendCheckUpdateRequest(checkReq);
         else
             finishUpdateFuture(opRes0, err0, remapTopVer0, futId);
-    }
-
-    /**
-     * @return Future ID.
-     */
-    private Long onFutureDone() {
-        Long id0;
-
-        synchronized (this) {
-            id0 = futId;
-
-            futId = 0;
-        }
-
-        return id0;
     }
 
     /**

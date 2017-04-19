@@ -395,9 +395,9 @@ public class IgniteCacheAtomicProtocolTest extends GridCommonAbstractTest {
 
             nodeIdx++;
         }
-        while (nodeIdx < 10);
+        while (nodeIdx < 5);
 
-        assertEquals(keys.size(), keysMoved);
+        assertTrue("Failed to get moved key: " + keysMoved, keysMoved > 1);
 
         testSpi(clientNode).stopBlock(true);
 
