@@ -179,7 +179,12 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
         return false;
     }
 
-    private void completeFuture(GridCacheReturn ret, Throwable err, Long futId) {
+    /**
+     * @param ret Result.
+     * @param err Error.
+     * @param futId Not null ID if need remove future.
+     */
+    private void completeFuture(@Nullable GridCacheReturn ret, Throwable err, @Nullable Long futId) {
         Object retval = ret == null ? null : rawRetval ? ret : (this.retval || op == TRANSFORM) ?
             cctx.unwrapBinaryIfNeeded(ret.value(), keepBinary) : ret.success();
 
@@ -200,8 +205,11 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
         Long futId = null;
 
         synchronized (this) {
-            if (futureMapped())
+            if (futureMapped()) {
                 futId = this.futId;
+
+                topVer = AffinityTopologyVersion.ZERO;
+            }
         }
 
         if (super.onDone(null, err)) {
