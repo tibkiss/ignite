@@ -15,28 +15,16 @@
  * limitations under the License.
  */
 
-namespace Apache.Ignite.Core.Tests.Binary
-{
-    using System.Collections.Generic;
-    using Apache.Ignite.Core.Binary;
-    using NUnit.Framework;
+package org.apache.ignite.internal.processors.query.h2;
 
-    /// <summary>
-    /// Binary builder self test with dynamic type registration.
-    /// </summary>
-    [TestFixture]
-    public class BinaryBuilderSelfTestDynamicRegistration : BinaryBuilderSelfTest
-    {
-        /** <inheritdoc /> */
-        protected override ICollection<BinaryTypeConfiguration> GetTypeConfigurations()
-        {
-            // The only type to be registered is TestEnumRegistered,
-            // because unregistered enums are handled differently.
-
-            return new []
-            {
-                new BinaryTypeConfiguration(typeof(TestEnumRegistered))
-            };
-        }
+/**
+ * Geo-indexing test for binary mode.
+ */
+public class H2IndexingBinaryGeoSelfTest extends H2IndexingAbstractGeoSelfTest {
+    /**
+     * Constructor.
+     */
+    public H2IndexingBinaryGeoSelfTest() {
+        super(true, false);
     }
 }
