@@ -294,8 +294,10 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridCacheFutureA
         throw new UnsupportedOperationException();
     }
 
-    /** {@inheritDoc} */
-    @Override public final long id() {
+    /**
+     * @return Future ID.
+     */
+    final long id() {
         return futId;
     }
 

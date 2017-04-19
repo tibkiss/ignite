@@ -112,9 +112,6 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridCacheFuture
     /** Recovery flag. */
     protected final boolean recovery;
 
-    /** Wait for topology future flag. */
-    protected final boolean waitTopFut;
-
     /** Near cache flag. */
     protected final boolean nearEnabled;
 
@@ -179,8 +176,7 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridCacheFuture
         boolean skipStore,
         boolean keepBinary,
         boolean recovery,
-        int remapCnt,
-        boolean waitTopFut
+        int remapCnt
     ) {
         if (log == null) {
             msgLog = cctx.shared().atomicMessageLogger();
@@ -201,14 +197,18 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridCacheFuture
         this.skipStore = skipStore;
         this.keepBinary = keepBinary;
         this.recovery = recovery;
-        this.waitTopFut = waitTopFut;
 
         nearEnabled = CU.isNearEnabled(cctx);
 
-        if (!waitTopFut)
-            remapCnt = 1;
-
         this.remapCnt = remapCnt;
+    }
+
+    final boolean futureMapped() {
+        return topVer != AffinityTopologyVersion.ZERO;
+    }
+
+    final boolean checkFutureId(long futId) {
+        return topVer != AffinityTopologyVersion.ZERO && this.futId == futId;
     }
 
     /** {@inheritDoc} */
@@ -533,7 +533,7 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridCacheFuture
          * @return Request if need process primary fail response, {@code null} otherwise.
          */
         @Nullable GridNearAtomicAbstractUpdateRequest onPrimaryFail() {
-            if (finished())
+            if (finished() || req.nodeFailedResponse())
                 return null;
 
             /*
