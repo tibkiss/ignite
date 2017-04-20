@@ -88,15 +88,6 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
     /** Flag indicating that old value for 'invoke' operation was non null on primary node. */
     private static final int TX_ENTRY_OLD_VAL_ON_PRIMARY = 0x04;
 
-    /** Skip store flag bit mask. */
-    private static final int TX_ENTRY_SKIP_STORE_FLAG_MASK = 0x01;
-
-    /** Keep binary flag. */
-    private static final int TX_ENTRY_KEEP_BINARY_FLAG_MASK = 0x02;
-
-    /** Flag indicating that old value for 'invoke' operation was non null on primary node. */
-    private static final int TX_ENTRY_OLD_VAL_ON_PRIMARY = 0x04;
-
     /** Prepared flag updater. */
     private static final AtomicIntegerFieldUpdater<IgniteTxEntry> PREPARED_UPD =
         AtomicIntegerFieldUpdater.newUpdater(IgniteTxEntry.class, "prepared");

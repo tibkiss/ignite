@@ -28,7 +28,6 @@ import javax.cache.processor.EntryProcessorResult;
 import javax.cache.processor.MutableEntry;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
-import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cache.CacheEntryProcessor;
 import org.apache.ignite.internal.GridKernalContext;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
@@ -53,9 +52,6 @@ public final class GridCacheAtomicStampedImpl<T, S> implements GridCacheAtomicSt
                 return new IgniteBiTuple<>();
             }
         };
-
-    /** Logger. */
-    private IgniteLogger log;
 
     /** Atomic stamped name. */
     private String name;
@@ -103,8 +99,6 @@ public final class GridCacheAtomicStampedImpl<T, S> implements GridCacheAtomicSt
         this.key = key;
         this.atomicView = atomicView;
         this.name = name;
-
-        log = ctx.logger(getClass());
     }
 
     /** {@inheritDoc} */

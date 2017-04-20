@@ -629,7 +629,7 @@ public final class DataStructuresProcessor extends GridProcessorAdapter implemen
      * @param name Atomic long name.
      * @throws IgniteCheckedException If removing failed.
      */
-    public final void removeAtomicLong(final String name) throws IgniteCheckedException {
+    final void removeAtomicLong(final String name) throws IgniteCheckedException {
         assert name != null;
         assert dsCacheCtx != null;
 
@@ -788,7 +788,7 @@ public final class DataStructuresProcessor extends GridProcessorAdapter implemen
      * @param name Atomic reference name.
      * @throws IgniteCheckedException If removing failed.
      */
-    public final void removeAtomicReference(final String name) throws IgniteCheckedException {
+    final void removeAtomicReference(final String name) throws IgniteCheckedException {
         assert name != null;
         assert dsCacheCtx != null;
 
@@ -890,7 +890,7 @@ public final class DataStructuresProcessor extends GridProcessorAdapter implemen
      * @param name Atomic stamped name.
      * @throws IgniteCheckedException If removing failed.
      */
-    public final void removeAtomicStamped(final String name) throws IgniteCheckedException {
+    final void removeAtomicStamped(final String name) throws IgniteCheckedException {
         assert name != null;
         assert dsCacheCtx != null;
 

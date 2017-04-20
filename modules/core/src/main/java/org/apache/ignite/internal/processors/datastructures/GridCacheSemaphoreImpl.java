@@ -803,7 +803,7 @@ public final class GridCacheSemaphoreImpl implements GridCacheSemaphoreEx, Ignit
         try {
             initializeSemaphore();
 
-            boolean result = sync.tryAcquireSharedNanos(1, unit.toNanos(timeout));
+            boolean res = sync.tryAcquireSharedNanos(1, unit.toNanos(timeout));
 
             if (isBroken()) {
                 Thread.interrupted(); // Clear interrupt flag.
@@ -811,7 +811,7 @@ public final class GridCacheSemaphoreImpl implements GridCacheSemaphoreEx, Ignit
                 throw new InterruptedException();
             }
 
-            return result;
+            return res;
         }
         catch (IgniteCheckedException e) {
             throw U.convertException(e);

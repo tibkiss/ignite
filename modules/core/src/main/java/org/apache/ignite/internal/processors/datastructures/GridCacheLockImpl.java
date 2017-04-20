@@ -725,9 +725,9 @@ public final class GridCacheLockImpl implements GridCacheLockEx, IgniteChangeGlo
 
                                 // If this lock is fair, remove this node from queue.
                                 if (val.isFair() && newVal == 0) {
-                                    UUID removedNode = val.getNodes().removeFirst();
+                                    UUID rmvdNode = val.getNodes().removeFirst();
 
-                                    assert(thisNode.equals(removedNode));
+                                    assert(thisNode.equals(rmvdNode));
                                 }
 
                                 // Get global condition queue.
@@ -1127,7 +1127,7 @@ public final class GridCacheLockImpl implements GridCacheLockEx, IgniteChangeGlo
                 return;
 
             // Check if update came from this node.
-            boolean local = sync.isLockedLocally(val.getId());
+            boolean loc = sync.isLockedLocally(val.getId());
 
             // Process any incoming signals.
             boolean incomingSignals = sync.checkIncomingSignals(val);
@@ -1142,7 +1142,7 @@ public final class GridCacheLockImpl implements GridCacheLockEx, IgniteChangeGlo
             sync.setCurrentOwnerThread(val.getThreadId());
 
             // Check if any threads waiting on this node need to be notified.
-            if ((incomingSignals || sync.getPermits() == 0) && !local) {
+            if ((incomingSignals || sync.getPermits() == 0) && !loc) {
                 // Try to notify any waiting threads.
                 sync.release(0);
             }
@@ -1160,9 +1160,8 @@ public final class GridCacheLockImpl implements GridCacheLockEx, IgniteChangeGlo
             if (nodeId.equals(sync.getOwnerNode())) {
                 sync.setBroken(true);
 
-                if (!sync.failoverSafe) {
+                if (!sync.failoverSafe)
                     sync.interruptAll();
-                }
             }
 
             // Try to notify any waiting threads.
