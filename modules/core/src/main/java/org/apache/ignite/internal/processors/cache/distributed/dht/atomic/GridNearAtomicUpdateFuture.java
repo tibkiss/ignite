@@ -566,6 +566,7 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
     /**
      * @param opRes Operation result.
      * @param err Operation error.
+     * @param remapTopVer Not-null topology version if need remap update.
      * @param futId Future ID.
      */
     private void finishUpdateFuture(GridCacheReturn opRes,

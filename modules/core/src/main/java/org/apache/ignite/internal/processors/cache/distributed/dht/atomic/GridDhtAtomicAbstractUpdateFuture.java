@@ -60,9 +60,6 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.PRIMARY_SYNC
  */
 public abstract class GridDhtAtomicAbstractUpdateFuture extends GridCacheFutureAdapter<Void>
     implements GridCacheAtomicFuture<Void> {
-    /** */
-    private static final long serialVersionUID = 0L;
-
     /** Logger. */
     protected static IgniteLogger log;
 

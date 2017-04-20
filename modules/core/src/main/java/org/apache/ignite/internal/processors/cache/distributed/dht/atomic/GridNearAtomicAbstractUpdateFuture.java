@@ -135,7 +135,7 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridCacheFuture
     @GridToStringInclude
     protected CachePartialUpdateCheckedException err;
 
-    /** Future ID. */
+    /** Future ID, changes when operation is remapped. */
     @GridToStringInclude
     protected long futId;
 
@@ -203,10 +203,17 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridCacheFuture
         this.remapCnt = remapCnt;
     }
 
+    /**
+     * @return {@code True} if future was initialized and waits for responses.
+     */
     final boolean futureMapped() {
         return topVer != AffinityTopologyVersion.ZERO;
     }
 
+    /**
+     * @param futId Expected future ID.
+     * @return {@code True} if future was initialized with the same ID.
+     */
     final boolean checkFutureId(long futId) {
         return topVer != AffinityTopologyVersion.ZERO && this.futId == futId;
     }
@@ -356,7 +363,7 @@ public abstract class GridNearAtomicAbstractUpdateFuture extends GridCacheFuture
     /** {@inheritDoc} */
     @SuppressWarnings("ConstantConditions")
     @Override public final boolean onDone(@Nullable Object res, @Nullable Throwable err) {
-        assert err != null;
+        assert err != null : "onDone should be called only to finish future with error on cache/node stop";
 
         Long futId = null;
 
