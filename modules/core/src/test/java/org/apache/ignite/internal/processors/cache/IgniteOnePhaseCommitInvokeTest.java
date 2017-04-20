@@ -27,7 +27,7 @@ import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.TestRecordingCommunicationSpi;
 import org.apache.ignite.internal.managers.communication.GridIoMessage;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtTxPrepareResponse;
-import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPartitionSupplyMessageV2;
+import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPartitionSupplyMessage;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -53,6 +53,9 @@ public class IgniteOnePhaseCommitInvokeTest extends GridCommonAbstractTest {
     /** */
     private boolean client;
 
+    /** */
+    private static final String CACHE_NAME = "testCache";
+
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
@@ -67,6 +70,7 @@ public class IgniteOnePhaseCommitInvokeTest extends GridCommonAbstractTest {
 
         CacheConfiguration ccfg = new CacheConfiguration();
 
+        ccfg.setName(CACHE_NAME);
         ccfg.setAtomicityMode(TRANSACTIONAL);
         ccfg.setBackups(1);
         ccfg.setRebalanceMode(ASYNC);
@@ -117,7 +121,7 @@ public class IgniteOnePhaseCommitInvokeTest extends GridCommonAbstractTest {
         Ignite srv0 = startGrid(0);
 
         if (withOldVal)
-            srv0.cache(null).put(1, 1);
+            srv0.cache(CACHE_NAME).put(1, 1);
 
         client = true;
 
@@ -127,8 +131,8 @@ public class IgniteOnePhaseCommitInvokeTest extends GridCommonAbstractTest {
             @Override public boolean apply(GridIoMessage msg0) {
                 Message msg = msg0.message();
 
-                return msg instanceof GridDhtPartitionSupplyMessageV2 &&
-                    ((GridDhtPartitionSupplyMessageV2) msg).cacheId() == CU.cacheId(null);
+                return msg instanceof GridDhtPartitionSupplyMessage &&
+                    ((GridDhtPartitionSupplyMessage)msg).cacheId() == CU.cacheId(CACHE_NAME);
             }
         });
 
@@ -140,7 +144,7 @@ public class IgniteOnePhaseCommitInvokeTest extends GridCommonAbstractTest {
 
         IgniteInternalFuture<?> fut = GridTestUtils.runAsync(new Callable<Void>() {
             @Override public Void call() throws Exception {
-                Object res = clientNode.cache(null).invoke(1, new TestEntryProcessor(setVal, retPrev));
+                Object res = clientNode.cache(CACHE_NAME).invoke(1, new TestEntryProcessor(setVal, retPrev));
 
                 Object expRes;
 
@@ -162,7 +166,7 @@ public class IgniteOnePhaseCommitInvokeTest extends GridCommonAbstractTest {
         fut.get();
 
         if (!setVal)
-            checkCacheData(F.asMap(1, null), null);
+            checkCacheData(F.asMap(1, null), CACHE_NAME);
         else {
             Object expVal;
 
@@ -171,8 +175,10 @@ public class IgniteOnePhaseCommitInvokeTest extends GridCommonAbstractTest {
             else
                 expVal = withOldVal ? 1 : null;
 
-            checkCacheData(F.asMap(1, expVal), null);
+            checkCacheData(F.asMap(1, expVal), CACHE_NAME);
         }
+
+        checkOnePhaseCommitReturnValuesCleaned(-1);
     }
 
     /**

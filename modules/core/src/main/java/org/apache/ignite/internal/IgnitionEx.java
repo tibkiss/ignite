@@ -57,6 +57,7 @@ import org.apache.ignite.compute.ComputeJob;
 import org.apache.ignite.configuration.AtomicConfiguration;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.ConnectorConfiguration;
+import org.apache.ignite.configuration.MemoryConfiguration;
 import org.apache.ignite.configuration.DeploymentMode;
 import org.apache.ignite.configuration.FileSystemConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
@@ -93,13 +94,11 @@ import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
 import org.apache.ignite.spi.deployment.local.LocalDeploymentSpi;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
-import org.apache.ignite.spi.eventstorage.memory.MemoryEventStorageSpi;
+import org.apache.ignite.spi.eventstorage.NoopEventStorageSpi;
 import org.apache.ignite.spi.failover.always.AlwaysFailoverSpi;
 import org.apache.ignite.spi.indexing.noop.NoopIndexingSpi;
 import org.apache.ignite.spi.loadbalancing.LoadBalancingSpi;
 import org.apache.ignite.spi.loadbalancing.roundrobin.RoundRobinLoadBalancingSpi;
-import org.apache.ignite.spi.swapspace.file.FileSwapSpaceSpi;
-import org.apache.ignite.spi.swapspace.noop.NoopSwapSpaceSpi;
 import org.apache.ignite.thread.IgniteStripedThreadPoolExecutor;
 import org.apache.ignite.thread.IgniteThread;
 import org.apache.ignite.thread.IgniteThreadPoolExecutor;
@@ -1333,7 +1332,7 @@ public class IgnitionEx {
      * @param name Grid name.
      * @return Grid instance.
      */
-    private static IgniteKernal gridx(@Nullable String name) {
+    public  static IgniteKernal gridx(@Nullable String name) {
         IgniteNamedInstance grid = name != null ? grids.get(name) : dfltGrid;
 
         IgniteKernal res;
@@ -1528,6 +1527,9 @@ public class IgnitionEx {
         /** Query executor service. */
         private ThreadPoolExecutor qryExecSvc;
 
+        /** Query executor service. */
+        private ThreadPoolExecutor schemaExecSvc;
+
         /** Grid state. */
         private volatile IgniteState state = STOPPED;
 
@@ -1679,7 +1681,6 @@ public class IgnitionEx {
                 ensureMultiInstanceSupport(myCfg.getCollisionSpi());
                 ensureMultiInstanceSupport(myCfg.getFailoverSpi());
                 ensureMultiInstanceSupport(myCfg.getLoadBalancingSpi());
-                ensureMultiInstanceSupport(myCfg.getSwapSpaceSpi());
             }
 
             validateThreadPoolSize(cfg.getPublicThreadPoolSize(), "public");
@@ -1847,6 +1848,16 @@ public class IgnitionEx {
 
             qryExecSvc.allowCoreThreadTimeOut(true);
 
+            schemaExecSvc = new IgniteThreadPoolExecutor(
+                "schema",
+                cfg.getIgniteInstanceName(),
+                2,
+                2,
+                DFLT_THREAD_KEEP_ALIVE_TIME,
+                new LinkedBlockingQueue<Runnable>());
+
+            schemaExecSvc.allowCoreThreadTimeOut(true);
+
             // Register Ignite MBean for current grid instance.
             registerFactoryMbean(myCfg.getMBeanServer());
 
@@ -1874,6 +1885,7 @@ public class IgnitionEx {
                     idxExecSvc,
                     callbackExecSvc,
                     qryExecSvc,
+                    schemaExecSvc,
                     new CA() {
                         @Override public void apply() {
                             startLatch.countDown();
@@ -2104,6 +2116,14 @@ public class IgnitionEx {
 
             initializeDefaultCacheConfiguration(myCfg);
 
+            if (!myCfg.isClientMode() && myCfg.getMemoryConfiguration() == null) {
+                MemoryConfiguration memCfg = new MemoryConfiguration();
+
+                memCfg.setConcurrencyLevel(Runtime.getRuntime().availableProcessors() * 4);
+
+                myCfg.setMemoryConfiguration(memCfg);
+            }
+
             return myCfg;
         }
 
@@ -2184,7 +2204,7 @@ public class IgnitionEx {
                 cfg.setDeploymentSpi(new LocalDeploymentSpi());
 
             if (cfg.getEventStorageSpi() == null)
-                cfg.setEventStorageSpi(new MemoryEventStorageSpi());
+                cfg.setEventStorageSpi(new NoopEventStorageSpi());
 
             if (cfg.getCheckpointSpi() == null)
                 cfg.setCheckpointSpi(new NoopCheckpointSpi());
@@ -2218,22 +2238,6 @@ public class IgnitionEx {
 
             if (cfg.getIndexingSpi() == null)
                 cfg.setIndexingSpi(new NoopIndexingSpi());
-
-            if (cfg.getSwapSpaceSpi() == null) {
-                boolean needSwap = false;
-
-                if (cfg.getCacheConfiguration() != null && !Boolean.TRUE.equals(cfg.isClientMode())) {
-                    for (CacheConfiguration c : cfg.getCacheConfiguration()) {
-                        if (c.isSwapEnabled()) {
-                            needSwap = true;
-
-                            break;
-                        }
-                    }
-                }
-
-                cfg.setSwapSpaceSpi(needSwap ? new FileSwapSpaceSpi() : new NoopSwapSpaceSpi());
-            }
         }
 
         /**
@@ -2333,7 +2337,6 @@ public class IgnitionEx {
             cache.setName(CU.UTILITY_CACHE_NAME);
             cache.setCacheMode(REPLICATED);
             cache.setAtomicityMode(TRANSACTIONAL);
-            cache.setSwapEnabled(false);
             cache.setRebalanceMode(SYNC);
             cache.setWriteSynchronizationMode(FULL_SYNC);
             cache.setAffinity(new RendezvousAffinityFunction(false, 100));
@@ -2355,7 +2358,6 @@ public class IgnitionEx {
 
             ccfg.setName(CU.ATOMICS_CACHE_NAME);
             ccfg.setAtomicityMode(TRANSACTIONAL);
-            ccfg.setSwapEnabled(false);
             ccfg.setRebalanceMode(SYNC);
             ccfg.setWriteSynchronizationMode(FULL_SYNC);
             ccfg.setCacheMode(cfg.getCacheMode());
@@ -2403,12 +2405,12 @@ public class IgnitionEx {
 
                     shutdownHook = null;
 
-                    if (log.isDebugEnabled())
+                    if (log != null && log.isDebugEnabled())
                         log.debug("Shutdown hook is removed.");
                 }
                 catch (IllegalStateException e) {
                     // Shutdown is in progress...
-                    if (log.isDebugEnabled())
+                    if (log != null && log.isDebugEnabled())
                         log.debug("Shutdown is in progress (ignoring): " + e.getMessage());
                 }
 
@@ -2418,7 +2420,7 @@ public class IgnitionEx {
             try {
                 grid0.stop(cancel);
 
-                if (log.isDebugEnabled())
+                if (log != null && log.isDebugEnabled())
                     log.debug("Ignite instance stopped ok: " + name);
             }
             catch (Throwable e) {
@@ -2432,7 +2434,8 @@ public class IgnitionEx {
 
                 grid = null;
 
-                stopExecutors(log);
+                if (log != null)
+                    stopExecutors(log);
 
                 log = null;
             }
@@ -2474,6 +2477,10 @@ public class IgnitionEx {
             U.shutdownNow(getClass(), qryExecSvc, log);
 
             qryExecSvc = null;
+
+            U.shutdownNow(getClass(), schemaExecSvc, log);
+
+            schemaExecSvc = null;
 
             U.shutdownNow(getClass(), stripedExecSvc, log);
 

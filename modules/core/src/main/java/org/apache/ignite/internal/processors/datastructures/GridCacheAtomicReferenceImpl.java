@@ -36,12 +36,13 @@ import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.internal.processors.cluster.IgniteChangeGlobalStateSupport;
 import org.apache.ignite.lang.IgniteBiTuple;
 
 /**
  * Cache atomic reference implementation.
  */
-public final class GridCacheAtomicReferenceImpl<T> implements GridCacheAtomicReferenceEx<T>, Externalizable {
+public final class GridCacheAtomicReferenceImpl<T> implements GridCacheAtomicReferenceEx<T>, IgniteChangeGlobalStateSupport, Externalizable {
     /** */
     private static final long serialVersionUID = 0L;
 
@@ -220,6 +221,17 @@ public final class GridCacheAtomicReferenceImpl<T> implements GridCacheAtomicRef
         }
     }
 
+    /** {@inheritDoc} */
+    @Override public void onActivate(GridKernalContext kctx) throws IgniteCheckedException {
+        this.atomicView = kctx.cache().atomicsCache();
+        this.ctx = atomicView.context();
+    }
+
+    /** {@inheritDoc} */
+    @Override public void onDeActivate(GridKernalContext kctx) throws IgniteCheckedException {
+        // No-op.
+    }
+
     /**
      * Check removed status.
      *
@@ -245,6 +257,8 @@ public final class GridCacheAtomicReferenceImpl<T> implements GridCacheAtomicRef
                 throw removedError();
             }
         }
+
+
     }
 
     /**
